@@ -1,0 +1,102 @@
+final FirebaseStorage storage = FirebaseStorage.instance;
+final Reference amoledRef = storage.ref().child('category/amoled');
+
+ScrollController scrollController = ScrollController();
+
+class AmoledWallpaper extends StatefulWidget {
+  const AmoledWallpaper({super.key});
+
+  @override
+  State<AmoledWallpaper> createState() => _AmoledWallpaperState();
+}
+
+class _AmoledWallpaperState extends State<AmoledWallpaper> {
+  List<Reference> amoledRefs = [];
+  @override
+  void initState() {
+    super.initState();
+    loadamoledImages();
+  }
+
+  Future<void> loadamoledImages() async {
+    final ListResult result = await amoledRef.listAll();
+    amoledRefs = result.items.toList();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Color backgroundColor = Theme.of(context).colorScheme.background;
+    Color primaryColor = Theme.of(context).colorScheme.primary;
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: Theme.of(context).iconTheme,
+        backgroundColor: backgroundColor,
+        title: Text(
+          'Amoled',
+          style: GoogleFonts.kanit(
+            color: primaryColor,
+            fontSize: 22,
+          ),
+        ),
+      ),
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: FutureBuilder<ListResult>(
+                future: amoledRef.listAll(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Components.buildPlaceholder();
+                  } else if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  } else if (snapshot.hasData &&
+                      snapshot.data!.items.isNotEmpty) {
+                    List<Reference> imageRefs = snapshot.data!.items;
+
+                    return GridView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.75,
+                      ),
+                      itemCount: amoledRefs.length,
+                      itemBuilder: (context, index) {
+                        final amoRef = imageRefs[index];
+                        return FutureBuilder<String>(
+                          future: amoRef.getDownloadURL(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return Components.buildCircularIndicator();
+                            } else if (snapshot.hasError) {
+                              return Components.buildErrorWidget();
+                            } else if (snapshot.hasData) {
+                              return Components.buildImageWidget(
+                                  snapshot.data!);
+                            } else {
+                              return Container();
+                            }
+                          },
+                        );
+                      },
+                    );
+                  } else {
+                    return const Center(child: Text('No images available'));
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
